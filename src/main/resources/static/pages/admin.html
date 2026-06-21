@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel — Smart Parking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <span class="brand">Smart Parking — Admin</span>
+    <div class="nav-links">
+      <a href="/pages/dashboard.html">My Vehicles</a>
+      <a href="/pages/reservation.html">Reservations</a>
+      <a href="#" class="logout" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('lots', this)">Parking Lots</button>
+      <button class="tab-btn" onclick="switchTab('slots', this)">Slots</button>
+      <button class="tab-btn" onclick="switchTab('vehicles', this)">Vehicles</button>
+      <button class="tab-btn" onclick="switchTab('transactions', this)">Transactions</button>
+      <button class="tab-btn" onclick="switchTab('billing', this)">Billing</button>
+    </div>
+
+    <!-- LOTS -->
+    <div id="tab-lots" class="tab-content active">
+      <div class="card">
+        <h2>Add Parking Lot</h2>
+        <div id="lotMsg" class="msg"></div>
+        <form id="lotForm">
+          <div class="form-group">
+            <label>Lot Name</label>
+            <input type="text" id="lot_name" required>
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" id="location" required>
+          </div>
+          <div class="form-group">
+            <label>Total Slots</label>
+            <input type="number" id="total_slots" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Add Lot</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- SLOTS -->
+    <div id="tab-slots" class="tab-content">
+      <div class="card">
+        <h2>Add Slot</h2>
+        <div id="slotMsg" class="msg"></div>
+        <form id="slotForm">
+          <div class="form-group">
+            <label>Slot Number</label>
+            <input type="text" id="slot_number" required>
+          </div>
+          <div class="form-group">
+            <label>Slot Type</label>
+            <select id="slot_type">
+              <option value="CAR">CAR</option>
+              <option value="BIKE">BIKE</option>
+              <option value="TRUCK">TRUCK</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="slot_status">
+              <option value="AVAILABLE">AVAILABLE</option>
+              <option value="OCCUPIED">OCCUPIED</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Floor Number</label>
+            <input type="number" id="floor_number" required>
+          </div>
+          <div class="form-group">
+            <label>Lot ID</label>
+            <input type="number" id="lot_id" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Add Slot</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Slots by Lot</h2>
+        <div class="inline-row">
+          <input type="number" id="lot_id_search" placeholder="Lot ID">
+          <button class="btn btn-primary" onclick="loadSlotsByLot()">Load</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Number</th><th>Type</th><th>Floor</th><th>Status</th><th>Update Status</th></tr>
+          </thead>
+          <tbody id="slotsByLotBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Update Slot Status</h2>
+        <div id="updateSlotMsg" class="msg"></div>
+        <div class="inline-row">
+          <input type="number" id="update_slot_id" placeholder="Slot ID">
+          <select id="new_status">
+            <option value="AVAILABLE">AVAILABLE</option>
+            <option value="OCCUPIED">OCCUPIED</option>
+            <option value="RESERVED">RESERVED</option>
+          </select>
+          <button class="btn btn-primary" onclick="updateSlotStatus()">Update</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VEHICLES -->
+    <div id="tab-vehicles" class="tab-content">
+      <div class="card">
+        <h2>Vehicles by User ID</h2>
+        <div class="inline-row">
+          <input type="number" id="admin_user_id" placeholder="User ID">
+          <button class="btn btn-primary" onclick="loadVehiclesByUser()">Load</button>
+        </div>
+        <div id="adminVehicleMsg" class="msg"></div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Number</th><th>Type</th><th>Owner</th><th>Mobile</th></tr>
+          </thead>
+          <tbody id="adminVehicleBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Vehicle by ID</h2>
+        <div class="inline-row">
+          <input type="number" id="vehicle_id_search" placeholder="Vehicle ID">
+          <button class="btn btn-primary" onclick="loadVehicleById()">Load</button>
+        </div>
+        <div id="vehicleByIdResult"></div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div id="tab-transactions" class="tab-content">
+      <div class="card">
+        <h2>Record Entry</h2>
+        <div id="entryMsg" class="msg"></div>
+        <form id="entryForm">
+          <div class="form-group">
+            <label>Vehicle ID</label>
+            <input type="number" id="entry_vehicle_id" required>
+          </div>
+          <div class="form-group">
+            <label>Slot ID</label>
+            <input type="number" id="entry_slot_id" required>
+          </div>
+          <div class="form-group">
+            <label>Entry Time</label>
+            <input type="datetime-local" id="entry_time" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Record Entry</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Record Exit</h2>
+        <div id="exitMsg" class="msg"></div>
+        <form id="exitForm">
+          <div class="form-group">
+            <label>Transaction ID</label>
+            <input type="number" id="exit_txn_id" required>
+          </div>
+          <div class="form-group">
+            <label>Exit Time</label>
+            <input type="datetime-local" id="exit_time" required>
+          </div>
+          <div class="form-group">
+            <label>Duration (minutes)</label>
+            <input type="number" id="duration" required step="0.1">
+          </div>
+          <button type="submit" class="btn btn-primary">Record Exit</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Get Transaction by ID</h2>
+        <div class="inline-row">
+          <input type="number" id="txn_id_search" placeholder="Transaction ID">
+          <button class="btn btn-primary" onclick="loadTransaction()">Load</button>
+        </div>
+        <div id="txnResult"></div>
+      </div>
+    </div>
+
+    <!-- BILLING -->
+    <div id="tab-billing" class="tab-content">
+      <div class="card">
+        <h2>Billing by Transaction ID</h2>
+        <div class="inline-row">
+          <input type="number" id="bill_txn_id" placeholder="Transaction ID">
+          <button class="btn btn-primary" onclick="loadBilling()">Load</button>
+        </div>
+        <div id="billingResult"></div>
+      </div>
+       <div class="card">
+        <h2>Billing by Bill ID</h2>
+        <div class="inline-row">
+          <input type="number" id="bill_id_search" placeholder="Bill ID">
+          <button class="btn btn-primary" onclick="loadBillingById()">Load</button>
+        </div>
+        <div id="billingByIdResult"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAdmin(); // blocks non-admin users from this page
+
+    // ── LOTS ──
+    document.getElementById("lotForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const res = await apiFetch("/lots/add", "POST", {
+        lot_name:    document.getElementById("lot_name").value.trim(),
+        location:    document.getElementById("location").value.trim(),
+        total_slots: parseInt(document.getElementById("total_slots").value)
+      });
+      if (res && res.ok) {
+        showMsg("lotMsg", "Lot added. ID: " + res.data.lot_id, "success");
+        document.getElementById("lotForm").reset();
+      } else showMsg("lotMsg", "Failed to add lot.", "error");
+    });
+
+    // ── SLOTS ──
+    document.getElementById("slotForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const res = await apiFetch("/slots/add", "POST", {
+        slot_number:  document.getElementById("slot_number").value.trim(),
+        slot_type:    document.getElementById("slot_type").value,
+        status:       document.getElementById("slot_status").value,
+        floor_number: parseInt(document.getElementById("floor_number").value),
+        lot_id:       parseInt(document.getElementById("lot_id").value)
+      });
+      if (res && res.ok) {
+        showMsg("slotMsg", "Slot added. ID: " + res.data.slot_id, "success");
+        document.getElementById("slotForm").reset();
+      } else showMsg("slotMsg", "Failed to add slot.", "error");
+    });
+
+    async function loadSlotsByLot() {
+      const id = document.getElementById("lot_id_search").value;
+      if (!id) return;
+      const res = await apiFetch("/slots/lot/" + id);
+      const tbody = document.getElementById("slotsByLotBody");
+      tbody.innerHTML = "";
+      if (res && res.ok) {
+        res.data.forEach(s => {
+          tbody.innerHTML += `<tr>
+            <td>${s.slot_id}</td>
+            <td>${s.slot_number}</td>
+            <td>${s.slot_type}</td>
+            <td>${s.floor_number}</td>
+            <td>${statusBadge(s.status)}</td>
+            <td style="display:flex;gap:6px;padding:8px 13px">
+              <select id="st_${s.slot_id}" style="width:auto;padding:5px 8px;font-size:12px;flex:1">
+                <option value="AVAILABLE">AVAILABLE</option>
+                <option value="OCCUPIED">OCCUPIED</option>
+                <option value="RESERVED">RESERVED</option>
+              </select>
+              <button class="btn btn-neutral" style="padding:5px 10px;font-size:11px" onclick="quickUpdate(${s.slot_id})">Set</button>
+            </td>
+          </tr>`;
+        });
+      }
+    }
+
+    async function quickUpdate(slotId) {
+      const status = document.getElementById("st_" + slotId).value;
+      const res = await apiFetch(`/slots/status/${slotId}?status=${status}`, "PUT");
+      if (res && res.ok) { showMsg("updateSlotMsg", "Slot " + slotId + " updated.", "success"); loadSlotsByLot(); }
+      else showMsg("updateSlotMsg", "Failed to update.", "error");
+    }
+
+    async function updateSlotStatus() {
+      const slotId = document.getElementById("update_slot_id").value;
+      const status = document.getElementById("new_status").value;
+      if (!slotId) return;
+      const res = await apiFetch(`/slots/status/${slotId}?status=${status}`, "PUT");
+      if (res && res.ok) showMsg("updateSlotMsg", "Status updated.", "success");
+      else showMsg("updateSlotMsg", "Failed.", "error");
+    }
+
+    // ── VEHICLES ──
+    async function loadVehiclesByUser() {
+      const uid = document.getElementById("admin_user_id").value;
+      if (!uid) return;
+      const res = await apiFetch("/vehicle/user/" + uid);
+      const tbody = document.getElementById("adminVehicleBody");
+      tbody.innerHTML = "";
+      if (res && res.ok && res.data.length > 0) {
+        clearMsg("adminVehicleMsg");
+        res.data.forEach(v => {
+          tbody.innerHTML += `<tr>
+            <td>${v.vehicle_id}</td>
+            <td>${v.vehicle_number}</td>
+            <td>${v.vehicle_Type}</td>
+            <td>${v.owner_name}</td>
+            <td>${v.mobile_number}</td>
+          </tr>`;
+        });
+      } else showMsg("adminVehicleMsg", "No vehicles found.", "error");
+    }
+
+    async function loadVehicleById() {
+      const id = document.getElementById("vehicle_id_search").value;
+      if (!id) return;
+      const res = await apiFetch("/vehicle/" + id);
+      const el = document.getElementById("vehicleByIdResult");
+      if (res && res.ok) {
+        const v = res.data;
+        el.innerHTML = `<table class="detail-table">
+          <tr><th>ID</th><td>${v.vehicle_id}</td></tr>
+          <tr><th>Number</th><td>${v.vehicle_number}</td></tr>
+          <tr><th>Type</th><td>${v.vehicle_Type}</td></tr>
+          <tr><th>Owner</th><td>${v.owner_name}</td></tr>
+          <tr><th>Mobile</th><td>${v.mobile_number}</td></tr>
+        </table>`;
+      } else el.innerHTML = `<p style="color:#c0392b;margin-top:10px;font-size:13px">Vehicle not found.</p>`;
+    }
+
+    // ── TRANSACTIONS ──
+    document.getElementById("entryForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const res = await apiFetch("/transactions/entry", "POST", {
+        vehicle_id: parseInt(document.getElementById("entry_vehicle_id").value),
+        slot_id:    parseInt(document.getElementById("entry_slot_id").value),
+        entry_time: document.getElementById("entry_time").value,
+        status:     "ACTIVE"
+      });
+      if (res && res.ok) {
+        showMsg("entryMsg", "Entry recorded. Transaction ID: " + res.data.transaction_id, "success");
+        document.getElementById("entryForm").reset();
+      } else showMsg("entryMsg", "Failed to record entry.", "error");
+    });
+
+    document.getElementById("exitForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const txnId = document.getElementById("exit_txn_id").value;
+      const res = await apiFetch("/transactions/exit/" + txnId, "PUT", {
+        exit_time: document.getElementById("exit_time").value,
+        duration:  parseFloat(document.getElementById("duration").value),
+        status:    "COMPLETED"
+      });
+      if (res && res.ok) {
+        showMsg("exitMsg", "Exit recorded.", "success");
+        document.getElementById("exitForm").reset();
+      } else showMsg("exitMsg", "Failed to record exit.", "error");
+    });
+
+    async function loadTransaction() {
+      const id = document.getElementById("txn_id_search").value;
+      if (!id) return;
+      const res = await apiFetch("/transactions/" + id);
+      const el = document.getElementById("txnResult");
+      if (res && res.ok) {
+        const t = res.data;
+        el.innerHTML = `<table class="detail-table">
+          <tr><th>Transaction ID</th><td>${t.transaction_id}</td></tr>
+          <tr><th>Vehicle ID</th><td>${t.vehicle_id}</td></tr>
+          <tr><th>Slot ID</th><td>${t.slot_id}</td></tr>
+          <tr><th>Entry Time</th><td>${fmt(t.entry_time)}</td></tr>
+          <tr><th>Exit Time</th><td>${fmt(t.exit_time)}</td></tr>
+          <tr><th>Duration</th><td>${t.duration ?? "-"} mins</td></tr>
+          <tr><th>Status</th><td>${statusBadge(t.status)}</td></tr>
+        </table>`;
+      } else el.innerHTML = `<p style="color:#c0392b;margin-top:10px;font-size:13px">Transaction not found.</p>`;
+    }
+
+    // ── BILLING ──
+    async function loadBilling() {
+      const id = document.getElementById("bill_txn_id").value;
+      if (!id) return;
+      const res = await apiFetch("/billing/transaction/" + id);
+      const el = document.getElementById("billingResult");
+      if (res && res.ok) {
+        const b = res.data;
+        el.innerHTML = `<table class="detail-table">
+          <tr><th>Bill ID</th><td>${b.bill_id}</td></tr>
+          <tr><th>Amount</th><td>${b.amount}</td></tr>
+          <tr><th>Tax</th><td>${b.tax}</td></tr>
+          <tr><th>Total Amount</th><td><strong>${b.total_amount}</strong></td></tr>
+          <tr><th>Payment Method</th><td>${b.payment_method || "-"}</td></tr>
+          <tr><th>Payment Status</th><td>${statusBadge(b.payment_status)}</td></tr>
+        </table>`;
+      } else el.innerHTML = `<p style="color:#c0392b;margin-top:10px;font-size:13px">Billing not found for this transaction.</p>`;
+    }
+    
+    async function loadBillingById() {
+    	  const id = document.getElementById("bill_id_search").value;
+    	  if (!id) return;
+    	  const res = await apiFetch("/billing/" + id);
+    	  const el = document.getElementById("billingByIdResult");
+    	  if (res && res.ok) {
+    	    const b = res.data;
+    	    el.innerHTML = `<table class="detail-table">
+    	      <tr><th>Bill ID</th><td>${b.bill_id}</td></tr>
+    	      <tr><th>Amount</th><td>${b.amount}</td></tr>
+    	      <tr><th>Tax</th><td>${b.tax}</td></tr>
+    	      <tr><th>Total Amount</th><td><strong>${b.total_amount}</strong></td></tr>
+    	      <tr><th>Payment Method</th><td>${b.payment_method || "-"}</td></tr>
+    	      <tr><th>Payment Status</th><td>${statusBadge(b.payment_status)}</td></tr>
+    	    </table>`;
+    	  } else el.innerHTML = `<p style="color:#c0392b;margin-top:10px;font-size:13px">Bill not found.</p>`;
+    	}
+  </script>
+</body>
+</html>

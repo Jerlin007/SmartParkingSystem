@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+
+# Maven
+target/
+*.class
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.settings/
+.classpath
+.project
+
+# Eclipse
+bin/
+*.launch
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Kubernetes and Jenkins
+k8s/
+Jenkinsfile
+
+# Test reports
+test-results/
+surefire-reports/

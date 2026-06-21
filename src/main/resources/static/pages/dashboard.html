@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard — Smart Parking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <span class="brand">Smart Parking</span>
+    <div class="nav-links">
+      <a href="/pages/dashboard.html" class="active">My Vehicles</a>
+      <a href="/pages/reservation.html">Reservations</a>
+      <a href="/pages/payment.html">Payment</a>
+      <a href="/pages/admin.html" id="adminLink" style="display:none">Admin Panel</a>
+      <a href="#" class="logout" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('myvehicles', this)">My Vehicles</button>
+      <button class="tab-btn" onclick="switchTab('addvehicle', this)">Add Vehicle</button>
+    </div>
+
+    <!-- MY VEHICLES -->
+    <div id="tab-myvehicles" class="tab-content active">
+      <div class="card">
+        <h2>My Vehicles</h2>
+        <div class="inline-row">
+          <input type="number" id="fetch_user_id" placeholder="Your User ID">
+          <button class="btn btn-primary" onclick="loadVehicles()">Load</button>
+        </div>
+        <div id="vehicleMsg" class="msg"></div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Number</th><th>Type</th><th>Owner</th><th>Mobile</th></tr>
+          </thead>
+          <tbody id="vehicleBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ADD VEHICLE -->
+    <div id="tab-addvehicle" class="tab-content">
+      <div class="card">
+        <h2>Add Vehicle</h2>
+        <div id="addMsg" class="msg"></div>
+        <form id="addForm">
+          <div class="form-group">
+            <label>Vehicle Number</label>
+            <input type="text" id="vehicle_number" required>
+          </div>
+          <div class="form-group">
+            <label>Vehicle Type</label>
+            <select id="vehicle_Type">
+              <option value="CAR">CAR</option>
+              <option value="BIKE">BIKE</option>
+              <option value="TRUCK">TRUCK</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Owner Name</label>
+            <input type="text" id="owner_name" required>
+          </div>
+          <div class="form-group">
+            <label>Mobile Number</label>
+            <input type="text" id="mobile_number" required>
+          </div>
+          <div class="form-group">
+            <label>Your User ID</label>
+            <input type="number" id="user_id" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Add Vehicle</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+    // Show admin link only if role is ADMIN
+    if (getRole() === "ADMIN") document.getElementById("adminLink").style.display = "inline";
+
+    async function loadVehicles() {
+      const uid = document.getElementById("fetch_user_id").value;
+      if (!uid) { showMsg("vehicleMsg", "Please enter your User ID.", "error"); return; }
+      const res = await apiFetch("/vehicle/user/" + uid);
+      const tbody = document.getElementById("vehicleBody");
+      tbody.innerHTML = "";
+      if (res && res.ok && res.data.length > 0) {
+        clearMsg("vehicleMsg");
+        res.data.forEach(v => {
+          tbody.innerHTML += `<tr>
+            <td>${v.vehicle_id}</td>
+            <td>${v.vehicle_number}</td>
+            <td>${v.vehicle_Type}</td>
+            <td>${v.owner_name}</td>
+            <td>${v.mobile_number}</td>
+          </tr>`;
+        });
+      } else {
+        showMsg("vehicleMsg", res && res.status === 403
+          ? "Session expired. Please login again."
+          : "No vehicles found for this user.", "error");
+      }
+    }
+
+    document.getElementById("addForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = {
+        vehicle_number: document.getElementById("vehicle_number").value.trim(),
+        vehicle_Type:   document.getElementById("vehicle_Type").value,
+        owner_name:     document.getElementById("owner_name").value.trim(),
+        mobile_number:  document.getElementById("mobile_number").value.trim(),
+        user_id:        parseInt(document.getElementById("user_id").value)
+      };
+      const res = await apiFetch("/vehicle/add", "POST", body);
+      if (res && res.ok) {
+        showMsg("addMsg", "Vehicle added successfully. ID: " + res.data.vehicle_id, "success");
+        document.getElementById("addForm").reset();
+      } else {
+        showMsg("addMsg", "Failed to add vehicle. Check all fields.", "error");
+      }
+    });
+  </script>
+</body>
+</html>

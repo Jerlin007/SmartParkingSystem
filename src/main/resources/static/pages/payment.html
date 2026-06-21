@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payment — Smart Parking</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .bill-box {
+      background: #f8f8f8;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .bill-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+    .bill-row:last-child { border-bottom: none; }
+    .bill-row .label { color: #666; }
+    .bill-row .value { font-weight: 600; }
+    .bill-total {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0 0 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .upi-box {
+      text-align: center;
+      padding: 24px;
+      background: #f8f8f8;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .upi-id {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a2e;
+      letter-spacing: 1px;
+      margin: 12px 0;
+    }
+    .upi-note {
+      font-size: 12px;
+      color: #888;
+      margin-top: 8px;
+    }
+    .paid-box {
+      text-align: center;
+      padding: 24px;
+      background: #eafaf1;
+      border: 1px solid #27ae60;
+      border-radius: 6px;
+      color: #1e8449;
+      font-size: 16px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="brand">Smart Parking</span>
+    <div class="nav-links">
+      <a href="/pages/dashboard.html">My Vehicles</a>
+      <a href="/pages/reservation.html">Reservations</a>
+      <a href="/pages/payment.html" class="active">Payment</a>
+      <a href="/pages/admin.html" id="adminLink" style="display:none">Admin Panel</a>
+      <a href="#" class="logout" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- Load Bill -->
+    <div class="card">
+      <h2>View & Pay Bill</h2>
+      <div id="loadMsg" class="msg"></div>
+      <div class="inline-row">
+        <input type="number" id="txn_id" placeholder="Transaction ID">
+        <button class="btn btn-primary" onclick="loadBill()">Load Bill</button>
+      </div>
+    </div>
+
+    <!-- Bill Details -->
+    <div id="billSection" style="display:none">
+      <div class="card">
+        <h2>Bill Summary</h2>
+        <div class="bill-box">
+          <div class="bill-row">
+            <span class="label">Bill ID</span>
+            <span class="value" id="bill_id">-</span>
+          </div>
+          <div class="bill-row">
+            <span class="label">Transaction ID</span>
+            <span class="value" id="disp_txn_id">-</span>
+          </div>
+          <div class="bill-row">
+            <span class="label">Amount</span>
+            <span class="value" id="amount">-</span>
+          </div>
+          <div class="bill-row">
+            <span class="label">Tax (18%)</span>
+            <span class="value" id="tax">-</span>
+          </div>
+          <div class="bill-total">
+            <span>Total Amount</span>
+            <span id="total_amount">-</span>
+          </div>
+        </div>
+        <div class="bill-row">
+          <span class="label">Payment Method</span>
+          <span class="value" id="payment_method">-</span>
+        </div>
+        <div class="bill-row" style="margin-top:8px">
+          <span class="label">Payment Status</span>
+          <span id="payment_status_badge">-</span>
+        </div>
+      </div>
+
+      <!-- UPI Payment Section -->
+      <div id="paySection">
+        <div class="card">
+          <h2>Pay via UPI</h2>
+          <div class="upi-box">
+            <p style="font-size:13px;color:#666">Scan QR or pay to UPI ID</p>
+            <!-- Simple UPI QR using a free QR API -->
+            <img id="qrCode" src="" alt="UPI QR Code"
+              style="width:160px;height:160px;margin:12px auto;display:block;border:1px solid #eee;border-radius:4px">
+            <div class="upi-id" id="upiIdDisplay">-</div>
+            <p class="upi-note">Open GPay, PhonePe, Paytm or any UPI app and scan the QR or enter the UPI ID above</p>
+            <p class="upi-note" style="margin-top:6px">Enter amount: <strong id="payAmount">-</strong></p>
+          </div>
+
+          <div id="payMsg" class="msg"></div>
+          <p style="font-size:13px;color:#555;margin-bottom:14px">After completing payment in your UPI app, click the button below to confirm.</p>
+          <button class="btn btn-primary" onclick="markPaid()">I Have Paid — Confirm Payment</button>
+        </div>
+      </div>
+
+      <!-- Already Paid -->
+      <div id="paidSection" style="display:none">
+        <div class="paid-box">
+          Payment Completed — Thank you!
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+    if (getRole() === "ADMIN") document.getElementById("adminLink").style.display = "inline";
+
+    // Your UPI ID — change this to your actual UPI ID
+    const UPI_ID = "yourname@upi";
+    const UPI_NAME = "Smart Parking";
+
+    let currentBillId = null;
+
+    async function loadBill() {
+      const txnId = document.getElementById("txn_id").value;
+      if (!txnId) { showMsg("loadMsg", "Enter a Transaction ID.", "error"); return; }
+
+      const res = await apiFetch("/billing/transaction/" + txnId);
+      if (res && res.ok) {
+        clearMsg("loadMsg");
+        const b = res.data;
+        currentBillId = b.bill_id;
+
+        document.getElementById("bill_id").textContent = b.bill_id;
+        document.getElementById("disp_txn_id").textContent = b.transaction_id;
+        document.getElementById("amount").textContent = "₹" + b.amount.toFixed(2);
+        document.getElementById("tax").textContent = "₹" + b.tax.toFixed(2);
+        document.getElementById("total_amount").textContent = "₹" + b.total_amount.toFixed(2);
+        document.getElementById("payment_method").textContent = b.payment_method || "UPI";
+        document.getElementById("payment_status_badge").innerHTML = statusBadge(b.payment_status);
+        document.getElementById("payAmount").textContent = "₹" + b.total_amount.toFixed(2);
+        document.getElementById("upiIdDisplay").textContent = UPI_ID;
+
+        // Generate QR code for UPI payment
+        const upiUrl = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${b.total_amount.toFixed(2)}&cu=INR&tn=SmartParking-Bill-${b.bill_id}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiUrl)}`;
+        document.getElementById("qrCode").src = qrUrl;
+
+        document.getElementById("billSection").style.display = "block";
+
+        if (b.payment_status === "PAID") {
+          document.getElementById("paySection").style.display = "none";
+          document.getElementById("paidSection").style.display = "block";
+        } else {
+          document.getElementById("paySection").style.display = "block";
+          document.getElementById("paidSection").style.display = "none";
+        }
+      } else {
+        showMsg("loadMsg", "Bill not found for this transaction.", "error");
+      }
+    }
+
+    async function markPaid() {
+      if (!currentBillId) return;
+      if (!confirm("Confirm that you have completed the UPI payment?")) return;
+
+      const res = await apiFetch("/billing/pay/" + currentBillId + "?paymentMethod=UPI", "PUT");
+      if (res && res.ok) {
+        document.getElementById("payment_status_badge").innerHTML = statusBadge("PAID");
+        document.getElementById("paySection").style.display = "none";
+        document.getElementById("paidSection").style.display = "block";
+      } else {
+        showMsg("payMsg", "Failed to confirm payment.", "error");
+      }
+    }
+  </script>
+</body>
+</html>

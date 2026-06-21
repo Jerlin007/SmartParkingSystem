@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reservations — Smart Parking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <span class="brand">Smart Parking</span>
+    <div class="nav-links">
+      <a href="/pages/dashboard.html">My Vehicles</a>
+      <a href="/pages/reservation.html" class="active">Reservations</a>
+      <a href="/pages/payment.html">Payment</a>
+      <a href="/pages/admin.html" id="adminLink" style="display:none">Admin Panel</a>
+      <a href="#" class="logout" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('available', this)">Available Slots</button>
+      <button class="tab-btn" onclick="switchTab('make', this)">Make Reservation</button>
+      <button class="tab-btn" onclick="switchTab('mine', this)">My Reservations</button>
+    </div>
+
+    <!-- AVAILABLE SLOTS -->
+    <div id="tab-available" class="tab-content active">
+      <div class="card">
+        <h2>Available Slots</h2>
+        <button class="btn btn-neutral" style="margin-bottom:14px" onclick="loadSlots()">Refresh</button>
+        <table>
+          <thead>
+            <tr><th>Slot ID</th><th>Number</th><th>Type</th><th>Floor</th><th>Status</th></tr>
+          </thead>
+          <tbody id="slotsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MAKE RESERVATION -->
+    <div id="tab-make" class="tab-content">
+      <div class="card">
+        <h2>Make Reservation</h2>
+        <div id="resMsg" class="msg"></div>
+        <form id="resForm">
+          <div class="form-group">
+            <label>Vehicle ID</label>
+            <input type="number" id="vehicle_id" required>
+          </div>
+          <div class="form-group">
+            <label>Slot ID</label>
+            <input type="number" id="slot_id" required>
+          </div>
+          <div class="form-group">
+            <label>Reservation Time</label>
+            <input type="datetime-local" id="reservation_time" required>
+          </div>
+          <div class="form-group">
+            <label>Planned Start Time</label>
+            <input type="datetime-local" id="start_time" required>
+          </div>
+          <div class="form-group">
+            <label>Planned End Time</label>
+            <input type="datetime-local" id="end_time" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Reserve</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MY RESERVATIONS -->
+    <div id="tab-mine" class="tab-content">
+      <div class="card">
+        <h2>My Reservations</h2>
+        <div class="inline-row">
+          <input type="number" id="res_vehicle_id" placeholder="Vehicle ID">
+          <button class="btn btn-primary" onclick="loadReservations()">Load</button>
+        </div>
+        <div id="resListMsg" class="msg"></div>
+        <div id="checkinMsg" class="msg"></div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Slot</th>
+              <th>Planned Start</th>
+              <th>Planned End</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="resBody"></tbody>
+        </table>
+      </div>
+
+      <!-- CHECK OUT always visible below -->
+      <div class="card">
+        <h2>Check Out</h2>
+        <p style="font-size:13px;color:#666;margin-bottom:16px">
+          After Check In, enter the Transaction ID you received to check out and generate your bill.
+        </p>
+        <div id="checkoutMsg" class="msg"></div>
+        <div class="inline-row">
+          <input type="number" id="checkout_txn_id" placeholder="Transaction ID">
+          <button class="btn btn-primary" onclick="checkOut()">Check Out & Generate Bill</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+    if (getRole() === "ADMIN") document.getElementById("adminLink").style.display = "inline";
+
+    async function loadSlots() {
+      const res = await apiFetch("/slots/available");
+      const tbody = document.getElementById("slotsBody");
+      tbody.innerHTML = "";
+      if (res && res.ok) {
+        if (!res.data.length) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#999;padding:16px">No available slots</td></tr>`;
+          return;
+        }
+        res.data.forEach(s => {
+          tbody.innerHTML += `<tr>
+            <td>${s.slot_id}</td>
+            <td>${s.slot_number}</td>
+            <td>${s.slot_type}</td>
+            <td>${s.floor_number}</td>
+            <td>${statusBadge(s.status)}</td>
+          </tr>`;
+        });
+      }
+    }
+
+    document.getElementById("resForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = {
+        vehicle_id:       parseInt(document.getElementById("vehicle_id").value),
+        slot_id:          parseInt(document.getElementById("slot_id").value),
+        reservation_time: document.getElementById("reservation_time").value,
+        start_time:       document.getElementById("start_time").value,
+        end_time:         document.getElementById("end_time").value,
+        status:           "ACTIVE"
+      };
+      const res = await apiFetch("/reservations/add", "POST", body);
+      if (res && res.ok) {
+        showMsg("resMsg", "Reservation created. ID: " + res.data.reservation_id, "success");
+        document.getElementById("resForm").reset();
+        loadSlots();
+      } else {
+        showMsg("resMsg", "Failed. Check slot availability and vehicle ID.", "error");
+      }
+    });
+
+    async function loadReservations() {
+      const vid = document.getElementById("res_vehicle_id").value;
+      if (!vid) return;
+      const res = await apiFetch("/reservations/vehicle/" + vid);
+      const tbody = document.getElementById("resBody");
+      tbody.innerHTML = "";
+      if (res && res.ok && res.data.length > 0) {
+        clearMsg("resListMsg");
+        res.data.forEach(r => {
+          let actions = "";
+          if (r.status === "CANCELLED") {
+            actions = "-";
+          } else {
+            actions = `
+              <button class="btn" style="padding:4px 10px;font-size:11px;margin-right:4px;background:#27ae60;color:white"
+                onclick="checkIn(${r.reservation_id}, ${r.vehicle_id}, ${r.slot_id})">Check In</button>
+              <button class="btn btn-danger" style="padding:4px 10px;font-size:11px"
+                onclick="cancelRes(${r.reservation_id})">Cancel</button>`;
+          }
+          tbody.innerHTML += `<tr>
+            <td>${r.reservation_id}</td>
+            <td>${r.slot_id}</td>
+            <td>${fmt(r.start_time)}</td>
+            <td>${fmt(r.end_time)}</td>
+            <td>${statusBadge(r.status)}</td>
+            <td>${actions}</td>
+          </tr>`;
+        });
+      } else {
+        showMsg("resListMsg", "No reservations found for this vehicle.", "error");
+      }
+    }
+
+    async function checkIn(reservationId, vehicleId, slotId) {
+      if (!confirm("Confirm Check In? Current time will be recorded as entry time.")) return;
+      const res = await apiFetch("/transactions/entry", "POST", {
+        vehicle_id: vehicleId,
+        slot_id:    slotId,
+        status:     "ACTIVE"
+      });
+      if (res && res.ok) {
+        const txnId = res.data.transaction_id;
+        // Auto fill the checkout field with transaction ID
+        document.getElementById("checkout_txn_id").value = txnId;
+        showMsg("checkinMsg",
+          "Checked in! Transaction ID: " + txnId + ". Check Out section is ready below.", "success");
+      } else {
+        showMsg("checkinMsg", "Check in failed.", "error");
+      }
+    }
+
+    async function checkOut() {
+      const txnId = document.getElementById("checkout_txn_id").value;
+      if (!txnId) { showMsg("checkoutMsg", "Enter your Transaction ID.", "error"); return; }
+      if (!confirm("Confirm Check Out? Current time will be recorded and bill will be generated.")) return;
+
+      const res = await apiFetch("/transactions/exit/" + txnId, "PUT", {
+        status: "COMPLETED"
+      });
+      if (res && res.ok) {
+        showMsg("checkoutMsg",
+          "Checked out! Bill generated. Admin can view it in Billing tab using Transaction ID: " + txnId, "success");
+        document.getElementById("checkout_txn_id").value = "";
+        loadSlots();
+      } else {
+        showMsg("checkoutMsg", "Check out failed. Check the Transaction ID.", "error");
+      }
+    }
+
+    async function cancelRes(id) {
+      if (!confirm("Cancel this reservation?")) return;
+      const res = await apiFetch("/reservations/cancel/" + id, "PUT");
+      if (res && res.ok) {
+        loadReservations();
+        loadSlots();
+      } else {
+        showMsg("resListMsg", "Failed to cancel.", "error");
+      }
+    }
+
+    loadSlots();
+  </script>
+</body>
+</html>

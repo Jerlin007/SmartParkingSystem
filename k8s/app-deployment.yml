@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartparking-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smartparking-app
+  template:
+    metadata:
+      labels:
+        app: smartparking-app
+    spec:
+      containers:
+        - name: smartparking-app
+          image: smartparking-app:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/mydb
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: root-password
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: update
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartparking-service
+spec:
+  type: NodePort
+  selector:
+    app: smartparking-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
