@@ -16,13 +16,13 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                bat 'mvn clean package -DskipTests'
             }
         }
 
         stage('Test') {
             steps {
-                sh 'mvn test'
+                bat 'mvn test'
             }
             post {
                 always {
@@ -33,13 +33,13 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t smartparking-app:latest .'
+                bat 'docker build -t smartparking-app:latest .'
             }
         }
 
         stage('Deploy') {
             steps {
-                sh '''
+                bat '''
                     kubectl apply -f k8s/mysql-deployment.yml
                     kubectl apply -f k8s/app-deployment.yml
                 '''
