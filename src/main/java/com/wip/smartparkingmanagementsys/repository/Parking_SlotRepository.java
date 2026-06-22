@@ -18,6 +18,8 @@ import com.wip.smartparkingmanagementsys.entity.Parking_Slot;
 public interface Parking_SlotRepository  extends JpaRepository<Parking_Slot, Long> {
 	
     List<Parking_Slot> findByStatus(String status);
+    @Query("SELECT COUNT(ps) FROM Parking_Slot ps WHERE ps.pl.lot_id = :lotId")
+    long countByLotId(@Param("lotId") Long lotId);
 
 
 

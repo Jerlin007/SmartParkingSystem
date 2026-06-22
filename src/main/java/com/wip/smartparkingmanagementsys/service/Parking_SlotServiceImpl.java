@@ -23,15 +23,25 @@ public class Parking_SlotServiceImpl implements Parking_SlotService {
     @Autowired
     private Parking_LotRepository lotrepository;
 
-	@Override
-	public Parking_SlotDto addSlot(Parking_SlotDto slotDto) {
-        Parking_Slot slot = Parking_SlotConverter.toEntity(slotDto);
+    @Override
+    public Parking_SlotDto addSlot(Parking_SlotDto slotDto) {
         Parking_Lot lot = lotrepository.findById(slotDto.getLot_id())
                 .orElseThrow(() -> new RuntimeException("Lot not found"));
+
+        // Count existing slots in this lot
+        long currentSlotCount = slotrepository.countByLotId(slotDto.getLot_id());
+
+        // Check if adding one more exceeds the total capacity
+        if (currentSlotCount >= lot.getTotal_slots()) {
+            throw new RuntimeException("Cannot add more slots. Lot capacity of " 
+                + lot.getTotal_slots() + " slots is full.");
+        }
+
+        Parking_Slot slot = Parking_SlotConverter.toEntity(slotDto);
         slot.setPl(lot);
         Parking_Slot saved = slotrepository.save(slot);
         return Parking_SlotConverter.toDto(saved);
-	}
+    }
 
 	@Override
 	public List<Parking_SlotDto> getAvailable() {

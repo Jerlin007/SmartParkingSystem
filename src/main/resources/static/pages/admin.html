@@ -244,7 +244,9 @@
       if (res && res.ok) {
         showMsg("slotMsg", "Slot added. ID: " + res.data.slot_id, "success");
         document.getElementById("slotForm").reset();
-      } else showMsg("slotMsg", "Failed to add slot.", "error");
+      } else {
+        showMsg("slotMsg", typeof res.data === "string" ? res.data : "Failed to add slot.", "error");
+      }
     });
 
     async function loadSlotsByLot() {

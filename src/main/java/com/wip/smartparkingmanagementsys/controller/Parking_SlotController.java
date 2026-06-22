@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,6 +46,12 @@ public class Parking_SlotController {
                                                @RequestParam String status) {
         slotservice.updateStatus(slot_id, status);
         return ResponseEntity.ok("Status updated");
+    }
+    
+    // Returns the actual error message to frontend instead of generic 500 error
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<String> handleException(RuntimeException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
     }
 
 }
