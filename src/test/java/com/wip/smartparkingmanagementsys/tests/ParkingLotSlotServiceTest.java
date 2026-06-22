@@ -58,6 +58,7 @@ class ParkingLotSlotServiceTest {
     void addSlot_savesAndReturnsDto() {
         Parking_Lot lot = new Parking_Lot();
         lot.setLot_id(1L);
+        lot.setTotal_slots(10); // FIX: set total_slots > 0
 
         Parking_Slot slot = new Parking_Slot();
         slot.setSlot_id(1L);
@@ -75,12 +76,32 @@ class ParkingLotSlotServiceTest {
         dto.setLot_id(1L);
 
         when(lotRepository.findById(1L)).thenReturn(Optional.of(lot));
+        when(slotRepository.countByLotId(1L)).thenReturn(0L); // FIX: mock count to return 0 (no slots yet)
         when(slotRepository.save(any())).thenReturn(slot);
 
         Parking_SlotDto result = slotService.addSlot(dto);
 
         assertNotNull(result);
         assertEquals("A1", result.getSlot_number());
+    }
+
+    @Test
+    void addSlot_capacityFull_throwsException() {
+        Parking_Lot lot = new Parking_Lot();
+        lot.setLot_id(1L);
+        lot.setTotal_slots(5); // lot has 5 slots capacity
+
+        Parking_SlotDto dto = new Parking_SlotDto();
+        dto.setSlot_number("A6");
+        dto.setSlot_type("CAR");
+        dto.setStatus("AVAILABLE");
+        dto.setFloor_number(1);
+        dto.setLot_id(1L);
+
+        when(lotRepository.findById(1L)).thenReturn(Optional.of(lot));
+        when(slotRepository.countByLotId(1L)).thenReturn(5L); // already 5 slots = full
+
+        assertThrows(RuntimeException.class, () -> slotService.addSlot(dto));
     }
 
     @Test
